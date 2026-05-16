@@ -1,0 +1,65 @@
+version: '3.8'
+
+services:
+
+  # ── Spring Boot App ────────────────────────────────────────
+  app:
+    build: .
+    container_name: url-shortener-app
+    ports:
+      - "8080:8080"
+    environment:
+      - DB_HOST=postgres
+      - DB_NAME=urldb
+      - DB_USER=postgres
+      - DB_PASS=postgres
+      - REDIS_HOST=redis
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - urlnet
+    restart: on-failure
+
+  # ── PostgreSQL ─────────────────────────────────────────────
+  postgres:
+    image: postgres:15-alpine
+    container_name: url-shortener-db
+    environment:
+      POSTGRES_DB: urldb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - urlnet
+
+  # ── Redis ──────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: url-shortener-redis
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - urlnet
+
+# ── Volumes ────────────────────────────────────────────────
+volumes:
+  pgdata:
+    name: url-shortener-pgdata
+
+# ── Networks ───────────────────────────────────────────────
+networks:
+  urlnet:
+    name: url-shortener-network
+    driver: bridge
