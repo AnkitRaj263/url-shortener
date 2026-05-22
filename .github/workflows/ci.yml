@@ -31,16 +31,13 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build Docker image
+      - name: Build and Push Docker image
+        if: github.ref == 'refs/heads/main'
         run: |
           docker build \
             -t ${{ secrets.DOCKERHUB_USERNAME }}/url-shortener:latest \
             -t ${{ secrets.DOCKERHUB_USERNAME }}/url-shortener:${{ github.sha }} \
             .
-
-      - name: Push to Docker Hub
-        if: github.ref == 'refs/heads/main'
-        run: |
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/url-shortener:latest
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/url-shortener:${{ github.sha }}
 
@@ -54,14 +51,14 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Pull latest Docker image
+      - name: Pull latest image
         run: docker pull ${{ secrets.DOCKERHUB_USERNAME }}/url-shortener:latest
 
       - name: Stop existing containers
-        run: docker compose down
+        run: docker compose -f "C:\Users\AMAR KUMAR\Desktop\url-shortener\docker-compose.yml" down
 
-      - name: Start updated containers
-        run: docker compose up -d --build
+      - name: Deploy updated containers
+        run: docker compose -f "C:\Users\AMAR KUMAR\Desktop\url-shortener\docker-compose.yml" up -d
 
-      - name: Verify deployment
+      - name: Verify running containers
         run: docker ps
