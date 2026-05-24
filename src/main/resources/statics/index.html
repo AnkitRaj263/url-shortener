@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SnipURL — URL Shortener</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Clash+Display:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --surface: #111111;
+    --border: #222222;
+    --accent: #00ff88;
+    --accent2: #ff3366;
+    --text: #f0f0f0;
+    --muted: #666666;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Background grid */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,255,136,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,255,136,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 60px 24px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Header */
+  .header {
+    text-align: center;
+    margin-bottom: 60px;
+    animation: fadeDown 0.6s ease;
+  }
+
+  .logo {
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    color: var(--accent);
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .logo::before, .logo::after {
+    content: '';
+    height: 1px;
+    width: 40px;
+    background: var(--accent);
+    opacity: 0.4;
+  }
+
+  h1 {
+    font-family: 'Space Mono', monospace;
+    font-size: clamp(36px, 8vw, 72px);
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -0.03em;
+    margin-bottom: 12px;
+  }
+
+  h1 span { color: var(--accent); }
+
+  .tagline {
+    font-size: 13px;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+  }
+
+  /* Main card */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    padding: 32px;
+    margin-bottom: 24px;
+    animation: fadeUp 0.6s ease 0.1s both;
+  }
+
+  .card-label {
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .card-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* Input group */
+  .input-group {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 0;
+  }
+
+  .url-input {
+    flex: 1;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    padding: 14px 16px;
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .url-input::placeholder { color: var(--muted); }
+
+  .url-input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px rgba(0,255,136,0.1);
+  }
+
+  .btn {
+    background: var(--accent);
+    color: var(--bg);
+    border: none;
+    border-radius: 2px;
+    padding: 14px 28px;
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+
+  .btn:hover {
+    background: #00cc6e;
+    transform: translateY(-1px);
+  }
+
+  .btn:active { transform: translateY(0); }
+
+  .btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  /* Result box */
+  .result-box {
+    display: none;
+    margin-top: 20px;
+    background: rgba(0,255,136,0.05);
+    border: 1px solid rgba(0,255,136,0.2);
+    border-radius: 2px;
+    padding: 20px;
+    animation: fadeUp 0.3s ease;
+  }
+
+  .result-box.show { display: block; }
+
+  .result-label {
+    font-size: 10px;
+    color: var(--accent);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .result-url {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--accent);
+    word-break: break-all;
+    margin-bottom: 14px;
+  }
+
+  .result-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .btn-sm {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    padding: 8px 16px;
+    border-radius: 2px;
+    cursor: pointer;
+    letter-spacing: 0.05em;
+    transition: all 0.2s;
+    text-decoration: none;
+    display: inline-block;
+  }
+
+  .btn-copy {
+    background: var(--accent);
+    color: var(--bg);
+    border: none;
+    font-weight: 700;
+  }
+
+  .btn-copy:hover { background: #00cc6e; }
+
+  .btn-visit {
+    background: transparent;
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+
+  .btn-visit:hover { border-color: var(--text); }
+
+  /* Error box */
+  .error-box {
+    display: none;
+    margin-top: 16px;
+    background: rgba(255,51,102,0.05);
+    border: 1px solid rgba(255,51,102,0.2);
+    border-radius: 2px;
+    padding: 14px 16px;
+    font-size: 12px;
+    color: var(--accent2);
+  }
+
+  .error-box.show { display: block; }
+
+  /* Stats section */
+  .stats-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    padding: 32px;
+    animation: fadeUp 0.6s ease 0.2s both;
+  }
+
+  .stats-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+  }
+
+  .btn-refresh {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    padding: 6px 14px;
+    border-radius: 2px;
+    cursor: pointer;
+    letter-spacing: 0.05em;
+    transition: all 0.2s;
+  }
+
+  .btn-refresh:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  /* Table */
+  .stats-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .stats-table th {
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    text-align: left;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .stats-table td {
+    font-size: 12px;
+    padding: 12px;
+    border-bottom: 1px solid rgba(34,34,34,0.5);
+    vertical-align: middle;
+  }
+
+  .stats-table tr:last-child td { border-bottom: none; }
+
+  .stats-table tr:hover td { background: rgba(255,255,255,0.02); }
+
+  .code-badge {
+    background: rgba(0,255,136,0.1);
+    color: var(--accent);
+    padding: 4px 8px;
+    border-radius: 2px;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.2s;
+    text-decoration: none;
+    display: inline-block;
+  }
+
+  .code-badge:hover { background: rgba(0,255,136,0.2); }
+
+  .original-url {
+    color: var(--muted);
+    font-size: 11px;
+    max-width: 280px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .click-count {
+    color: var(--text);
+    font-weight: 700;
+    text-align: center;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 40px;
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  .loading {
+    text-align: center;
+    padding: 20px;
+    color: var(--muted);
+    font-size: 12px;
+    letter-spacing: 0.1em;
+  }
+
+  .loading::after {
+    content: '...';
+    animation: dots 1s infinite;
+  }
+
+  /* Footer */
+  .footer {
+    text-align: center;
+    margin-top: 40px;
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    animation: fadeUp 0.6s ease 0.3s both;
+  }
+
+  .footer span { color: var(--accent); }
+
+  /* Animations */
+  @keyframes fadeDown {
+    from { opacity: 0; transform: translateY(-20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes dots {
+    0%, 20% { content: '.'; }
+    40% { content: '..'; }
+    60%, 100% { content: '...'; }
+  }
+
+  /* Copy toast */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--accent);
+    color: var(--bg);
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 12px 20px;
+    border-radius: 2px;
+    transform: translateY(80px);
+    transition: transform 0.3s ease;
+    z-index: 100;
+    letter-spacing: 0.05em;
+  }
+
+  .toast.show { transform: translateY(0); }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="logo">SnipURL</div>
+    <h1>MAKE IT<br><span>SHORT.</span></h1>
+    <p class="tagline">// paste long. get short. share fast.</p>
+  </div>
+
+  <!-- Shorten card -->
+  <div class="card">
+    <div class="card-label">Shorten URL</div>
+    <div class="input-group">
+      <input
+        type="text"
+        class="url-input"
+        id="urlInput"
+        placeholder="https://your-very-long-url.com/goes/here"
+        onkeydown="if(event.key==='Enter') shortenUrl()"
+      />
+      <button class="btn" id="shortenBtn" onclick="shortenUrl()">SNIP →</button>
+    </div>
+
+    <!-- Result -->
+    <div class="result-box" id="resultBox">
+      <div class="result-label">// your short url is ready</div>
+      <div class="result-url" id="resultUrl"></div>
+      <div class="result-actions">
+        <button class="btn-sm btn-copy" onclick="copyUrl()">COPY</button>
+        <a class="btn-sm btn-visit" id="visitLink" href="#" target="_blank">VISIT →</a>
+      </div>
+    </div>
+
+    <!-- Error -->
+    <div class="error-box" id="errorBox"></div>
+  </div>
+
+  <!-- Stats card -->
+  <div class="stats-card">
+    <div class="stats-header">
+      <div class="card-label" style="margin-bottom:0">Recent URLs</div>
+      <button class="btn-refresh" onclick="loadStats()">↻ REFRESH</button>
+    </div>
+
+    <div id="statsContent">
+      <div class="loading">loading</div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    built with <span>Spring Boot</span> · <span>Redis</span> · <span>PostgreSQL</span> · <span>Docker</span>
+  </div>
+
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast">COPIED!</div>
+
+<script>
+  const BASE_URL = window.location.origin;
+
+  async function shortenUrl() {
+    const input = document.getElementById('urlInput');
+    const btn = document.getElementById('shortenBtn');
+    const resultBox = document.getElementById('resultBox');
+    const errorBox = document.getElementById('errorBox');
+    const url = input.value.trim();
+
+    if (!url) {
+      showError('Please enter a URL first!');
+      return;
+    }
+
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      showError('URL must start with http:// or https://');
+      return;
+    }
+
+    // Reset
+    resultBox.classList.remove('show');
+    errorBox.classList.remove('show');
+    btn.disabled = true;
+    btn.textContent = 'SNIPPING...';
+
+    try {
+      const response = await fetch(`${BASE_URL}/shorten`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        const shortUrl = `${BASE_URL}/${data.shortCode}`;
+        document.getElementById('resultUrl').textContent = shortUrl;
+        document.getElementById('visitLink').href = shortUrl;
+        resultBox.classList.add('show');
+        input.value = '';
+        loadStats();
+      } else {
+        showError(data.error || 'Something went wrong!');
+      }
+    } catch (err) {
+      showError('Cannot connect to server. Make sure Docker is running!');
+    }
+
+    btn.disabled = false;
+    btn.textContent = 'SNIP →';
+  }
+
+  function showError(msg) {
+    const errorBox = document.getElementById('errorBox');
+    errorBox.textContent = '// error: ' + msg;
+    errorBox.classList.add('show');
+  }
+
+  function copyUrl() {
+    const url = document.getElementById('resultUrl').textContent;
+    navigator.clipboard.writeText(url).then(() => {
+      const toast = document.getElementById('toast');
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2000);
+    });
+  }
+
+  async function loadStats() {
+    const content = document.getElementById('statsContent');
+    content.innerHTML = '<div class="loading">loading</div>';
+
+    try {
+      const response = await fetch(`${BASE_URL}/stats`);
+      const data = await response.json();
+
+      if (data.length === 0) {
+        content.innerHTML = '<div class="empty-state">// no URLs yet. snip your first one above!</div>';
+        return;
+      }
+
+      // Sort by newest first
+      data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+      content.innerHTML = `
+        <table class="stats-table">
+          <thead>
+            <tr>
+              <th>Short Code</th>
+              <th>Original URL</th>
+              <th style="text-align:center">Clicks</th>
+              <th>Created</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${data.map(item => `
+              <tr>
+                <td>
+                  <a class="code-badge" href="/${item.shortCode}" target="_blank">
+                    ${item.shortCode}
+                  </a>
+                </td>
+                <td>
+                  <div class="original-url" title="${item.originalUrl}">
+                    ${item.originalUrl}
+                  </div>
+                </td>
+                <td class="click-count">${item.clickCount}</td>
+                <td style="color:var(--muted);font-size:11px">
+                  ${new Date(item.createdAt).toLocaleDateString()}
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+    } catch (err) {
+      content.innerHTML = '<div class="empty-state">// cannot load stats. is the server running?</div>';
+    }
+  }
+
+  // Load stats on page load
+  loadStats();
+</script>
+</body>
+</html>
